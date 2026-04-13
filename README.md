@@ -1,73 +1,116 @@
-# React + TypeScript + Vite
+# UmLivro Lab
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Editor de livros para autores — escrita, formatação, revisão com IA e exportação para PDF/EPub.
 
-Currently, two official plugins are available:
+## Funcionalidades
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Biblioteca** — gerenciamento de livros com busca por título, autor e ISBN, filtros por status e estatísticas gerais
+- **Editor rico** — baseado no TipTap com suporte a tipografia completa (fontes, tamanhos, entrelinha, cores, destaque, listas, tabelas, imagens redimensionáveis, notas adesivas, quebra de página)
+- **Toolbar flutuante** — aparece ao selecionar texto para formatação rápida (negrito, itálico, sublinhado, link, destaque, reescrita com IA)
+- **Capítulos** — criação, reordenação por drag-and-drop, renomeação e exclusão
+- **Configurações do livro** — formato de página, tipo de papel, margens, cabeçalho/rodapé com variáveis dinâmicas, paginação
+- **Metadados** — título, subtítulo, autor, ISBN, edição, sinopse, idioma, data de publicação, gênero, palavras-chave, faixa etária, canais de venda e promoções
+- **Revisão com IA** — análise ortográfica/gramatical via OpenAI, reescrita de parágrafo e Super Completar (expansão de texto)
+- **Exportação** — PDF via html2pdf e EPub via JSZip
+- **Importação** — DOCX (via Mammoth) e PDF (via pdf.js)
+- **Auto-save** — salva automaticamente a cada 800 ms de inatividade
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Camada | Tecnologia |
+|--------|-----------|
+| Framework | React 19 + TypeScript |
+| Build | Vite 7 |
+| Editor | TipTap 3 (ProseMirror) |
+| Estilo | Tailwind CSS 3 |
+| Estado | Zustand 5 (persistido no localStorage) |
+| Roteamento | React Router 7 |
+| Drag & Drop | dnd-kit |
+| IA | OpenAI API (gpt-4o-mini por padrão) |
+| PDF export | html2pdf.js |
+| PDF import | pdf.js |
+| DOCX import | Mammoth |
+| EPub | JSZip |
 
-## Expanding the ESLint configuration
+## Pré-requisitos
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Node.js 18+
+- npm, yarn ou pnpm
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Instalação e execução
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```bash
+# Clonar o repositório
+git clone <url-do-repositorio>
+cd livro-lab
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Instalar dependências
+npm install
+
+# Iniciar em modo desenvolvimento
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+A aplicação estará disponível em `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts disponíveis
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev       # Servidor de desenvolvimento com HMR
+npm run build     # Build de produção (tsc + vite build)
+npm run preview   # Pré-visualização do build de produção
+npm run lint      # Verificação de lint com ESLint
 ```
+
+## Configuração da IA (opcional)
+
+Os recursos de IA requerem uma chave da API da OpenAI. Configure via variável de ambiente ou diretamente na interface.
+
+**Via arquivo `.env`** (recomendado):
+
+```bash
+# Crie o arquivo na raiz do projeto
+cp .env.example .env
+```
+
+```env
+VITE_OPENAI_API_KEY=sk-...
+VITE_OPENAI_MODEL=gpt-4o-mini   # opcional, padrão: gpt-4o-mini
+```
+
+**Via interface**: acesse as configurações de IA dentro do editor para inserir a chave manualmente (salva no localStorage).
+
+Sem a chave configurada, todas as funcionalidades de escrita e edição funcionam normalmente — apenas os recursos de IA ficam desabilitados.
+
+## Estrutura do projeto
+
+```
+src/
+├── components/
+│   ├── ai/             # Modais de revisão, reescrita e expansão com IA
+│   ├── books/          # Modal de metadados e importação de livros
+│   ├── chapters/       # Painel de capítulos, item de capítulo e modal de configurações
+│   ├── editor/         # Toolbar, BubbleMenuBar, FloatingMenuBar, RichEditor e extensões TipTap
+│   ├── layout/         # AppShell e Sidebar
+│   ├── print/          # PrintSettings, PrintPreview e paginação
+│   └── ui/             # Componentes reutilizáveis (Modal, Input, Button, Toast, etc.)
+├── config/             # Configuração da IA
+├── hooks/              # useAutoSave, usePdfExport
+├── pages/              # Dashboard, BooksPage, EditorPage
+├── services/           # aiService, importService
+├── store/              # Zustand stores (useBookStore, useAIStore, useEditorSettingsStore)
+├── types/              # Tipos globais, formatos de página e configurações de impressão
+└── utils/              # Utilitários (id, htmlSanitizer, pageCalculator, templateParser)
+```
+
+## Persistência de dados
+
+Todos os dados (livros, capítulos, configurações) são armazenados no **localStorage** do navegador. Não há backend — o projeto é totalmente client-side.
+
+## Build de produção
+
+```bash
+npm run build
+```
+
+Os arquivos gerados ficam em `dist/` e podem ser servidos por qualquer servidor estático (Nginx, Apache, Vercel, Netlify, etc.).
