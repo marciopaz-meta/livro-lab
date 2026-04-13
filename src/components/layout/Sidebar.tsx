@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, Library, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
   collapsed: boolean;
@@ -56,16 +56,10 @@ export const Sidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 py-3 border-t border-gray-800 flex items-center justify-between">
-        {!collapsed && (
-          <button className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors">
-            <Settings size={15} />
-            <span>Configurações</span>
-          </button>
-        )}
+      <div className="px-2 py-3 border-t border-gray-800 flex items-center justify-end">
         <button
           onClick={onToggle}
-          className="ml-auto p-2 rounded-lg text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
           title={collapsed ? 'Expandir' : 'Recolher'}
         >
           {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}

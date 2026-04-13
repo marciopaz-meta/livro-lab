@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, BookOpen, Trash2, Copy, PenLine,
-  MoreHorizontal, FileText, BarChart2, TrendingUp, Layers, Upload, ChevronDown,
+  MoreHorizontal, FileText, BarChart2, TrendingUp, Layers, Upload, ChevronDown, Settings,
 } from 'lucide-react';
 import { useBookStore } from '../store/useBookStore';
 import { PAGE_FORMATS, PAPER_COLORS, DEFAULT_PRINT_SETTINGS } from '../types';
@@ -15,6 +15,7 @@ import { ContextMenu } from '../components/ui/ContextMenu';
 import { useToast } from '../components/ui/Toast';
 import { MetadataModal } from '../components/books/MetadataModal';
 import { ImportBookModal } from '../components/books/ImportBookModal';
+import { BookSettingsModal } from '../components/chapters/ChapterPanel';
 
 const STATUS_CONFIG = {
   draft: { label: 'Rascunho', dot: 'bg-gray-400' },
@@ -44,12 +45,13 @@ interface NewBookForm {
 interface CardMenuProps {
   onWrite: () => void;
   onMetadata: () => void;
+  onSettings: () => void;
   onImport: () => void;
   onClone: () => void;
   onDelete: () => void;
 }
 
-const CardMenu: React.FC<CardMenuProps> = ({ onWrite, onMetadata, onImport, onClone, onDelete }) => {
+const CardMenu: React.FC<CardMenuProps> = ({ onWrite, onMetadata, onSettings, onImport, onClone, onDelete }) => {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -112,6 +114,7 @@ const CardMenu: React.FC<CardMenuProps> = ({ onWrite, onMetadata, onImport, onCl
         >
           {item('Escrever Livro', <PenLine size={14} />, onWrite)}
           {item('Editar Metadados', <FileText size={14} />, onMetadata)}
+          {item('Configurações', <Settings size={14} />, onSettings)}
           {item('Importar Conteúdo', <Upload size={14} />, onImport)}
           <div className="my-1 border-t border-gray-100" />
           {item('Clonar', <Copy size={14} />, onClone)}
@@ -136,6 +139,7 @@ export const BooksPage: React.FC = () => {
   const [showNewDropdown, setShowNewDropdown] = useState(false);
   const newDropdownRef = useRef<HTMLDivElement>(null);
   const [metadataBook, setMetadataBook] = useState<Book | null>(null);
+  const [settingsBook, setSettingsBook] = useState<Book | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; book: Book } | null>(null);
   const [form, setForm] = useState<NewBookForm>({
     title: '',
@@ -369,6 +373,7 @@ export const BooksPage: React.FC = () => {
                       <CardMenu
                         onWrite={() => navigate(`/editor/${book.id}`)}
                         onMetadata={() => setMetadataBook(book)}
+                        onSettings={() => setSettingsBook(book)}
                         onImport={() => setShowImportModal(true)}
                         onClone={() => handleDuplicate(book)}
                         onDelete={() => handleDelete(book)}
@@ -422,6 +427,11 @@ export const BooksPage: React.FC = () => {
               label: 'Editar Metadados',
               icon: <FileText size={14} />,
               onClick: () => setMetadataBook(contextMenu.book),
+            },
+            {
+              label: 'Configurações',
+              icon: <Settings size={14} />,
+              onClick: () => setSettingsBook(contextMenu.book),
             },
             {
               label: 'Importar Conteúdo',
@@ -579,6 +589,14 @@ export const BooksPage: React.FC = () => {
         book={metadataBook}
         onClose={() => setMetadataBook(null)}
       />
+
+      {/* Modal: Configurações */}
+      {settingsBook && (
+        <BookSettingsModal
+          book={settingsBook}
+          onClose={() => setSettingsBook(null)}
+        />
+      )}
 
       {/* Modal: Importar */}
       <ImportBookModal

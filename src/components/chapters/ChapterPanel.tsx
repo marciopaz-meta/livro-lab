@@ -96,7 +96,7 @@ const HFEditor: React.FC<{
 
 const LANGUAGE_OPTIONS = ['Português', 'Inglês', 'Espanhol', 'Francês', 'Italiano'];
 
-const BookSettingsModal: React.FC<{ book: Book; onClose: () => void }> = ({ book, onClose }) => {
+export const BookSettingsModal: React.FC<{ book: Book; onClose: () => void }> = ({ book, onClose }) => {
   const { updateBook, updatePrintSettings } = useBookStore();
   const ps = book.printSettings;
   const upd = (partial: Partial<PrintSettings>) => updatePrintSettings(book.id, partial);
