@@ -2,9 +2,9 @@
 import mammoth from 'mammoth/mammoth.browser.min.js';
 import JSZip from 'jszip';
 import * as pdfjsLib from 'pdfjs-dist';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// pdfjs worker via CDN para evitar configuração de asset no Vite
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export interface ImportedChapter {
   title: string;
@@ -63,13 +63,36 @@ function parseDcMeta(opfText: string, tag: string): string {
 
 export async function importDocx(file: File): Promise<ImportedBook> {
   const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.convertToHtml({ arrayBuffer });
+  const result = await mammoth.convertToHtml({
+    arrayBuffer,
+    convertImage: mammoth.images.imgElement((image: { read: (enc: string) => Promise<string>; contentType: string }) =>
+      image.read('base64').then(data => ({ src: `data:${image.contentType};base64,${data}` }))
+    ),
+  });
   const chapters = splitByH1(result.value);
   const title = file.name.replace(/\.docx$/i, '');
   return { title, author: '', chapters };
 }
 
 // ─── EPUB ─────────────────────────────────────────────────────────────────────
+
+const IMAGE_MIME: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  png: 'image/png', gif: 'image/gif',
+  webp: 'image/webp', svg: 'image/svg+xml',
+};
+
+/** Resolve um caminho relativo: combina base dir + href relativo, normaliza "../" */
+function resolveEpubPath(base: string, href: string): string {
+  if (href.startsWith('/')) return href.slice(1);
+  const parts = (base + href).split('/');
+  const out: string[] = [];
+  for (const p of parts) {
+    if (p === '..') out.pop();
+    else if (p && p !== '.') out.push(p);
+  }
+  return out.join('/');
+}
 
 export async function importEpub(file: File): Promise<ImportedBook> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -96,16 +119,38 @@ export async function importEpub(file: File): Promise<ImportedBook> {
     hrefById.set(m[1], m[2]);
   }
 
-  // 4. Parsear cada item da spine
+  // 4. Pré-carregar todas as imagens da ZIP como data URLs
+  const imageDataUrls = new Map<string, string>();
+  for (const [zipPath, zipObj] of Object.entries(zip.files)) {
+    if (zipObj.dir) continue;
+    const ext = zipPath.split('.').pop()?.toLowerCase() ?? '';
+    const mime = IMAGE_MIME[ext];
+    if (!mime) continue;
+    const b64 = await zipObj.async('base64');
+    imageDataUrls.set(zipPath, `data:${mime};base64,${b64}`);
+  }
+
+  // 5. Parsear cada item da spine
   const chapters: ImportedChapter[] = [];
   for (const idref of idrefsOrder) {
     const href = hrefById.get(idref);
     if (!href) continue;
     const fullPath = opfDir + href;
+    const xhtmlDir = fullPath.includes('/') ? fullPath.slice(0, fullPath.lastIndexOf('/') + 1) : '';
     const html = await zip.file(fullPath)?.async('text') ?? '';
     if (!html) continue;
 
     const doc = new DOMParser().parseFromString(html, 'application/xhtml+xml');
+
+    // Substituir src das imagens por data URLs
+    doc.querySelectorAll('img').forEach(img => {
+      const src = img.getAttribute('src');
+      if (!src || src.startsWith('data:')) return;
+      const resolved = resolveEpubPath(xhtmlDir, src);
+      const dataUrl = imageDataUrls.get(resolved);
+      if (dataUrl) img.setAttribute('src', dataUrl);
+    });
+
     const h1 = doc.querySelector('h1')?.textContent?.trim();
     const h2 = doc.querySelector('h2')?.textContent?.trim();
     const chapterTitle = h1 || h2 || `Capítulo ${chapters.length + 1}`;

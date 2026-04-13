@@ -52,12 +52,15 @@ interface CardMenuProps {
 const CardMenu: React.FC<CardMenuProps> = ({ onWrite, onMetadata, onImport, onClone, onDelete }) => {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!pos) return;
     const handler = (e: MouseEvent) => {
-      // Fecha se clicar fora do próprio botão (o dropdown é um portal)
-      if (btnRef.current && !btnRef.current.contains(e.target as Node)) setPos(null);
+      const t = e.target as Node;
+      const insideBtn = btnRef.current?.contains(t) ?? false;
+      const insideDropdown = dropdownRef.current?.contains(t) ?? false;
+      if (!insideBtn && !insideDropdown) setPos(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -103,6 +106,7 @@ const CardMenu: React.FC<CardMenuProps> = ({ onWrite, onMetadata, onImport, onCl
       </button>
       {pos && createPortal(
         <div
+          ref={dropdownRef}
           style={{ top: pos.top, left: Math.max(8, pos.left) }}
           className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-48"
         >
@@ -180,7 +184,9 @@ export const BooksPage: React.FC = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return books.filter(b => {
-      const matchSearch = b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+      const matchSearch = b.title.toLowerCase().includes(q)
+        || b.author.toLowerCase().includes(q)
+        || (b.metadata?.isbn ?? '').toLowerCase().includes(q);
       const matchStatus = statusFilter === 'all' || b.status === statusFilter;
       return matchSearch && matchStatus;
     });
@@ -368,7 +374,13 @@ export const BooksPage: React.FC = () => {
                         onDelete={() => handleDelete(book)}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mb-2 truncate">{book.author}</p>
+                    <p className="text-xs text-gray-500 truncate">{book.author}</p>
+                    {book.metadata?.isbn && (
+                      <p className="text-[10px] text-gray-400 font-mono truncate mb-1" title={`ISBN: ${book.metadata.isbn}`}>
+                        {book.metadata.isbn}
+                      </p>
+                    )}
+                    {!book.metadata?.isbn && <div className="mb-2" />}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <div className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />

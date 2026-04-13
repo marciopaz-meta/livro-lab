@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import type { Mark as PMMark } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import { BulletList } from '@tiptap/extension-list';
 import { wrappingInputRule } from '@tiptap/core';
@@ -9,7 +10,7 @@ import { Color } from '@tiptap/extension-color';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Link } from '@tiptap/extension-link';
-import { Image } from '@tiptap/extension-image';
+import { ResizableImage } from './extensions/ResizableImage';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { TaskList } from '@tiptap/extension-task-list';
@@ -27,6 +28,7 @@ import { Focus } from '@tiptap/extension-focus';
 import { PageBreak } from './extensions/PageBreak';
 import { StickyNote } from './extensions/StickyNote';
 import { FontSize } from './extensions/FontSize';
+import { LineHeight } from './extensions/LineHeight';
 import { FontInheritance } from './extensions/FontInheritance';
 import {
   AICorrectionMark,
@@ -125,9 +127,10 @@ export const RichEditor: React.FC<Props> = ({
       Color,
       FontFamily,
       FontSize,
+      LineHeight,
       Highlight.configure({ multicolor: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
-      Image.configure({ inline: false, allowBase64: true }),
+      ResizableImage.configure({ inline: false, allowBase64: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: 'Comece a escrever seu capítulo...' }),
       TaskList,
@@ -150,6 +153,28 @@ export const RichEditor: React.FC<Props> = ({
       attributes: {
         class: 'prose-editor focus:outline-none',
         spellcheck: 'true',
+      },
+      handlePaste(view, event) {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (const item of Array.from(items)) {
+          if (item.type.startsWith('image/')) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (!file) return true;
+            const reader = new FileReader();
+            reader.onload = e => {
+              const src = e.target?.result as string;
+              if (src) {
+                const node = view.state.schema.nodes['image']?.create({ src });
+                if (node) view.dispatch(view.state.tr.replaceSelectionWith(node));
+              }
+            };
+            reader.readAsDataURL(file);
+            return true;
+          }
+        }
+        return false;
       },
     },
   });
@@ -244,24 +269,29 @@ export const RichEditor: React.FC<Props> = ({
     const markType = state.schema.marks['aiCorrection'];
     if (!markType) return;
 
-    // Coleta o range completo coberto pela marca (pode abranger múltiplos text nodes)
     let markFrom = -1;
     let markTo = -1;
+    let inheritedMarks: PMMark[] = [];
+
     doc.nodesBetween(0, doc.content.size, (node, pos) => {
       if (!node.isText) return true;
       const hasMark = node.marks.find(
         m => m.type === markType && (m.attrs as { id: string }).id === correctionId,
       );
       if (hasMark) {
-        if (markFrom === -1) markFrom = pos;
+        if (markFrom === -1) {
+          markFrom = pos;
+          // Coleta marks do primeiro text node, excluindo a marca de IA
+          inheritedMarks = node.marks.filter(m => m.type !== markType);
+        }
         markTo = pos + node.nodeSize;
       }
       return true;
     });
 
     if (markFrom !== -1 && markTo !== -1) {
-      const tr = state.tr.replaceWith(markFrom, markTo, state.schema.text(suggestion));
-      dispatch(tr);
+      const newText = state.schema.text(suggestion, inheritedMarks.length ? inheritedMarks : undefined);
+      dispatch(state.tr.replaceWith(markFrom, markTo, newText));
     }
     removeCorrection(correctionId);
     setActivePopover(null);
@@ -370,9 +400,6 @@ export const RichEditor: React.FC<Props> = ({
   const { fontFamily, fontSize, lineHeight } = book.printSettings;
   const fmt = PAGE_FORMATS[book.printSettings.format];
   const paperBg = PAPER_COLORS[book.paperType ?? 'offset'].bg;
-  const scaledWidth = Math.round(fmt.widthPx * zoom / 100);
-  const scaledHeight = Math.round(fmt.heightPx * zoom / 100);
-  const scaledPad = Math.round(72 * zoom / 100);
 
   return (
     <div className="flex flex-col h-full bg-gray-900">
@@ -410,6 +437,7 @@ export const RichEditor: React.FC<Props> = ({
         </div>
       )}
 
+      {editor && <BubbleMenuBar editor={editor} onRewriteParagraph={handleRewriteParagraph} onSuperComplete={handleSuperComplete} />}
       <div
         ref={editorWrapperRef}
         className="flex-1 overflow-auto editor-canvas"
@@ -419,18 +447,18 @@ export const RichEditor: React.FC<Props> = ({
           <div
             className="editor-page shadow-2xl rounded"
             style={{
-              width: scaledWidth,
-              minHeight: scaledHeight,
-              padding: `${scaledPad}px`,
+              zoom: zoom / 100,
+              width: fmt.widthPx,
+              minHeight: fmt.heightPx,
+              padding: '72px',
               fontFamily: `${fontFamily}, Georgia, serif`,
-              fontSize: `${Math.round(fontSize * zoom / 100)}px`,
+              fontSize: `${fontSize}px`,
               lineHeight: lineHeight,
               color: '#1a140e',
               background: paperBg,
-              transition: 'width 0.2s ease, background 0.3s ease',
+              transition: 'background 0.3s ease',
             }}
           >
-            {editor && <BubbleMenuBar editor={editor} onRewriteParagraph={handleRewriteParagraph} onSuperComplete={handleSuperComplete} />}
             {editor && <FloatingMenuBar editor={editor} onInsertTable={handleInsertTable} />}
             <EditorContent editor={editor} className="editor-content" />
           </div>

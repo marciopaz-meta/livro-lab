@@ -48,6 +48,7 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
     subtitle: '',
     author: '',
     edition: '',
+    isbn: '',
     synopsis: '',
     language: 'Português',
     publicationDate: '',
@@ -57,7 +58,6 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
     ageRating: 'Livre' as AgeRating,
     genre: '',
     keywords: '',
-    isbn: '',
   });
 
   const [priceForm, setPriceForm] = useState({
@@ -75,6 +75,7 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
       subtitle: book.subtitle ?? '',
       author: book.author,
       edition: m.edition ?? '',
+      isbn: m.isbn ?? '',
       synopsis: book.description ?? '',
       language: book.languages?.[0] ?? 'Português',
       publicationDate: m.publicationDate ?? '',
@@ -83,7 +84,6 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
       ageRating: m.ageRating ?? 'Livre',
       genre: book.genre ?? '',
       keywords: (m.keywords ?? []).join(', '),
-      isbn: m.isbn ?? '',
     });
     setPriceForm({
       listPrice: m.listPrice != null ? String(m.listPrice) : '',
@@ -135,7 +135,7 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
       publicationDate: infoForm.publicationDate || undefined,
       ageRating: catForm.ageRating,
       keywords: catForm.keywords ? parseKeywords(catForm.keywords) : undefined,
-      isbn: catForm.isbn.trim() || undefined,
+      isbn: infoForm.isbn.trim() || undefined,
       listPrice: priceForm.listPrice ? parseFloat(priceForm.listPrice.replace(',', '.')) : undefined,
       salesChannels: priceForm.salesChannels.length > 0 ? priceForm.salesChannels : undefined,
       promotions: promotions.length > 0 ? promotions : undefined,
@@ -193,6 +193,14 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
                 value={infoForm.edition}
                 onChange={e => setInfoForm(f => ({ ...f, edition: e.target.value }))}
                 placeholder="Ex.: 1, 2ª edição..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="ISBN"
+                value={infoForm.isbn}
+                onChange={e => setInfoForm(f => ({ ...f, isbn: e.target.value }))}
+                placeholder="Ex.: 978-3-16-148410-0"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -276,12 +284,6 @@ export const MetadataModal: React.FC<Props> = ({ book, onClose }) => {
                 </div>
               )}
             </div>
-            <Input
-              label="ISBN"
-              value={catForm.isbn}
-              onChange={e => setCatForm(f => ({ ...f, isbn: e.target.value }))}
-              placeholder="Ex.: 978-3-16-148410-0"
-            />
           </>
         )}
 

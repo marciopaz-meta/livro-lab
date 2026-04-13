@@ -8,7 +8,7 @@ import {
   Heading1, Heading2, Heading3,
   Undo, Redo, Link, Unlink,
   Table, FileDown, ZoomIn, ZoomOut,
-  Highlighter, Type, StickyNote, Trash2, Save,
+  Highlighter, Type, StickyNote, Trash2, Save, ImagePlus,
   Sparkles, Wand2, Loader2, XCircle,
 } from 'lucide-react';
 import { ToolbarButton } from './ToolbarButton';
@@ -59,6 +59,16 @@ export const FONT_FAMILIES = [
 ];
 
 const FONT_SIZES = ['8','9','10','11','12','13','14','16','18','20','24','28','32','36','48','64','72'];
+const LINE_HEIGHTS = [
+  { value: '1',    label: '1,0 — Simples' },
+  { value: '1.15', label: '1,15' },
+  { value: '1.25', label: '1,25' },
+  { value: '1.5',  label: '1,5' },
+  { value: '1.75', label: '1,75' },
+  { value: '2',    label: '2,0 — Duplo' },
+  { value: '2.5',  label: '2,5' },
+  { value: '3',    label: '3,0' },
+];
 const SEP = () => <div className="w-px h-5 bg-gray-600 mx-0.5 self-center flex-shrink-0" />;
 
 // Table operation icons (LibreOffice-style: miniature table + visual indicator)
@@ -140,6 +150,16 @@ const ToolbarInner: React.FC<Props & { editor: Editor }> = ({
   const [showTextColor, setShowTextColor] = useState(false);
   const [showHighlightColor, setShowHighlightColor] = useState(false);
   const [showTableInsert, setShowTableInsert] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const src = e.target?.result as string;
+      if (src) editor.chain().focus().setImage({ src }).run();
+    };
+    reader.readAsDataURL(file);
+  };
   const [tableRows, setTableRows] = useState(3);
   const [tableCols, setTableCols] = useState(3);
   const [tableHeader, setTableHeader] = useState(true);
@@ -211,6 +231,9 @@ const ToolbarInner: React.FC<Props & { editor: Editor }> = ({
       canRedo: ctx.editor.can().redo(),
       fontFamily: ctx.editor.getAttributes('textStyle').fontFamily || '',
       fontSize: (ctx.editor.getAttributes('textStyle').fontSize || '12px').replace(/[a-z]+$/i, ''),
+      lineHeight: ctx.editor.getAttributes('paragraph').lineHeight
+        || ctx.editor.getAttributes('heading').lineHeight
+        || '',
       textColor: ctx.editor.getAttributes('textStyle').color || '#ffffff',
       highlightColor: ctx.editor.getAttributes('highlight').color || '#fef08a',
       isInTable: ctx.editor.isActive('tableCell') || ctx.editor.isActive('tableHeader'),
@@ -246,8 +269,22 @@ const ToolbarInner: React.FC<Props & { editor: Editor }> = ({
       </select>
 
       <select value={s.fontSize || '12'} onChange={e => editor.chain().focus().setFontSize(e.target.value + 'px').run()}
-        className="bg-gray-700 text-gray-200 text-xs rounded px-1.5 py-1 border border-gray-600 focus:outline-none focus:border-amber-500 w-14 flex-shrink-0" title="Tamanho">
+        className="bg-gray-700 text-gray-200 text-xs rounded px-1.5 py-1 border border-gray-600 focus:outline-none focus:border-amber-500 w-14 flex-shrink-0" title="Tamanho da fonte">
         {FONT_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+      </select>
+
+      <select
+        value={s.lineHeight}
+        onChange={e => {
+          const v = e.target.value;
+          if (v) editor.chain().focus().setLineHeight(v).run();
+          else editor.chain().focus().unsetLineHeight().run();
+        }}
+        className="bg-gray-700 text-gray-200 text-xs rounded px-1.5 py-1 border border-gray-600 focus:outline-none focus:border-amber-500 w-28 flex-shrink-0"
+        title="Altura da linha"
+      >
+        <option value="">↕ Linha</option>
+        {LINE_HEIGHTS.map(lh => <option key={lh.value} value={lh.value}>{lh.label}</option>)}
       </select>
       <SEP />
 
@@ -412,6 +449,22 @@ const ToolbarInner: React.FC<Props & { editor: Editor }> = ({
           })}
         </div>
       </div>
+
+      {/* Image */}
+      <ToolbarButton onClick={() => imageInputRef.current?.click()} title="Inserir imagem">
+        <ImagePlus size={15} />
+      </ToolbarButton>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) handleImageFile(file);
+          e.target.value = '';
+        }}
+      />
 
       {/* Page break */}
       <ToolbarButton
